@@ -98,11 +98,8 @@
       </md-steppers>
 
       <md-dialog-actions>
-        <md-button class="md-primary" @click="showDialog = false"
+        <md-button class="md-dense md-raised md-primary" @click="showDialog = false"
           >Close</md-button
-        >
-        <md-button class="md-primary" @click="showDialog = false"
-          >Save</md-button
         >
       </md-dialog-actions>
     </md-dialog>
@@ -214,8 +211,6 @@ export default {
     },
   },
   mounted() {
-    // this.getDevices();
-
     navigator.mediaDevices.getUserMedia({ audio: true, video: true })
       .then((stream) => {
         const audioContext = new AudioContext();
