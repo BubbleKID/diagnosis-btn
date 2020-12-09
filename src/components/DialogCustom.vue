@@ -1,6 +1,6 @@
 <template>
   <div>
-    <md-dialog :md-active.sync="showDialog">
+    <md-dialog :md-active.sync="showDialog" @md-closed="onDialogClose">
       <md-dialog-title>Self-diagnosis</md-dialog-title>
       <md-steppers>
         <md-step
@@ -90,6 +90,13 @@
         </md-step>
 
         <md-step id="fouth" md-label="Check Microphone">
+          <md-button
+            class="md-raised md-primary"
+            type="button"
+            @click="startAudio"
+          >
+            Start Microphone
+          </md-button>
           <h2>Microphone</h2>
           <div class="pids-wrapper">
             <div v-for="pid in pids" v-bind:key="pid" class="pid"></div>
@@ -98,14 +105,11 @@
       </md-steppers>
 
       <md-dialog-actions>
-        <md-button class="md-dense md-raised md-primary" @click="showDialog = false"
-          >Close</md-button
-        >
+        <md-button class="md-dense md-raised md-primary" @click="showDialog = false">Close</md-button>
       </md-dialog-actions>
     </md-dialog>
 
-    <md-button class="md-primary md-raised" @click="showDialog = true"
-      >Diagnose</md-button
+    <md-button class="md-primary md-raised" @click="showDialog = true">Diagnose</md-button
     >
   </div>
 </template>
@@ -122,9 +126,6 @@ Vue.use(WebCam);
 
 export default {
   name: 'DialogCustom',
-  props: {
-    msg: String,
-  },
   components: {
     'vue-web-cam': WebCam,
   },
@@ -198,7 +199,6 @@ export default {
         allPids[i].style.backgroundColor = '#e6e7e8';
       }
       for (let i = 0; i < elemRange.length; i += 1) {
-        // console.log(elem_range[i]);
         elemRange[i].style.backgroundColor = '#69ce2b';
       }
     },
@@ -209,49 +209,66 @@ export default {
       && device.deviceId !== 'default'
       && device.deviceId !== 'communications');
     },
+    startAudio() {
+      navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+        .then((stream) => {
+          this.audio = stream;
+          const audioContext = new AudioContext();
+          const analyser = audioContext.createAnalyser();
+          const microphone = audioContext.createMediaStreamSource(stream);
+          const javascriptNode = audioContext.createScriptProcessor(2048, 1, 1);
+
+          analyser.smoothingTimeConstant = 0.8;
+          analyser.fftSize = 1024;
+          microphone.connect(analyser);
+          analyser.connect(javascriptNode);
+          javascriptNode.connect(audioContext.destination);
+          javascriptNode.onaudioprocess = () => {
+            const array = new Uint8Array(analyser.frequencyBinCount);
+            analyser.getByteFrequencyData(array);
+            let values = 0;
+
+            const { length } = array;
+            for (let i = 0; i < length; i += 1) {
+              values += (array[i]);
+            }
+
+            const average = values / length;
+            this.colorPids(average);
+          };
+        })
+        .catch((err) => console.log(err));
+    },
+    onDialogClose() {
+      // Stop camera when exit
+      if (this.$refs.webcam) {
+        this.$refs.webcam.stop();
+      }
+      // Stop mic when exit
+      if (this.audio !== null) {
+        this.audio.getTracks().forEach((track) => track.stop());
+      }
+    },
   },
   mounted() {
-    navigator.mediaDevices.getUserMedia({ audio: true, video: true })
-      .then((stream) => {
-        const audioContext = new AudioContext();
-        const analyser = audioContext.createAnalyser();
-        const microphone = audioContext.createMediaStreamSource(stream);
-        const javascriptNode = audioContext.createScriptProcessor(2048, 1, 1);
 
-        analyser.smoothingTimeConstant = 0.8;
-        analyser.fftSize = 1024;
-        microphone.connect(analyser);
-        analyser.connect(javascriptNode);
-        javascriptNode.connect(audioContext.destination);
-        javascriptNode.onaudioprocess = () => {
-          const array = new Uint8Array(analyser.frequencyBinCount);
-          analyser.getByteFrequencyData(array);
-          let values = 0;
-
-          const { length } = array;
-          for (let i = 0; i < length; i += 1) {
-            values += (array[i]);
-          }
-
-          const average = values / length;
-          this.colorPids(average);
-        };
-      })
-      .catch((err) => console.log(err));
   },
 };
 </script>
 
 <style lang="scss">
   #first-iframe {
-    width: 600px;
+    width: 100%;
     height: 650px;
-    -ms-zoom: 0.75;
-    -moz-transform: scale(0.75);
+  }
+
+  #first-iframe {
+    -ms-zoom: 1;
+    -moz-transform: scale(1);
     -moz-transform-origin: 0 0;
-    -o-transform: scale(0.75);
+    -o-transform: scale(1);
     -o-transform-origin: 0 0;
-    -webkit-transform: scale(0.75);
+    -webkit-transform: scale(1);
     -webkit-transform-origin: 0 0;
   }
 
@@ -268,5 +285,9 @@ export default {
     height: 10px;
     display: inline-block;
     margin: 5px;
+  }
+
+  .md-dialog-actions {
+    justify-content: center !important;
   }
 </style>
