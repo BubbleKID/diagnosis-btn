@@ -12,7 +12,7 @@
           <iframe
             id="first-iframe"
             frameborder="0"
-            src="http://cloudcampus.speedtestcustom.com/"
+            src="https://cloudcampus.speedtestcustom.com/"
           >
             <p>Your browser does not support iframes.</p>
           </iframe>
